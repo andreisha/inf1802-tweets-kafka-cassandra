@@ -1,0 +1,50 @@
+// CRIAR TOPICO E TOPICO INTERMEDIARIO
+kafka-topics --zookeeper $KAFKA_ZOOKEEPER_CONNECT --create --topic tweets_by_language --partitions 3 --replication-factor 1
+kafka-topics --zookeeper $KAFKA_ZOOKEEPER_CONNECT --create --topic topico_intermediario_language --partitions 3 --replication-factor 1
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KGroupedStream;
+import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.apache.kafka.streams.kstream.KTable;
+
+import java.util.Arrays;
+import java.util.Properties;
+
+public class tweetsByLanguage {
+
+    public static void main(String[] args) {
+        Properties config = new Properties();
+        config.put(StreamsConfig.APPLICATION_ID_CONFIG,"tweets_application"); // Modify if new run
+        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,"127.0.0.1:9092");
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
+        config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,Serdes.String().getClass());
+        config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,Serdes.String().getClass());
+        
+        // pega stream entrante
+        KStream<String, String, Date, String, Double, Double> tweet = builder.stream("tweets_input");
+        // Vai de (null, userName,text, dateCreated, language, geoLatitude, geoLongitude) a (language, userName)
+        tweet = tweet.selectKey( (key,value) ->  value.split(",")[3]); // bota language como key
+        KStream<String, String> tweetLanguage = tweet.mapValues( value ->  value.split(",")[0]);  // bota userName como value
+        
+        // group by color + inserir
+        tweetLanguage.to("topico_intermediario_language");
+        KTable<String,String> recentTable = builder.table("topico_intermediario_language");
+
+       // KTable<String, Long> wordCounts = userAndColor.groupBy((key,value) -> value).count("counts");
+        KTable<String, Long> languageCounts = recentTable.groupBy( (key,value) -> new KeyValue<>( value, value) ).count("counts");
+        languageCounts.to(Serdes.String(), Serdes.Long(), "tweets_by_language");
+
+        KafkaStreams streams = new KafkaStreams(builder,config);
+        streams.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+
+
+    }
+
+}
