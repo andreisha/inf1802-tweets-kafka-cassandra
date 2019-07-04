@@ -31,6 +31,12 @@ TWITTER_CONSUMER_SECRET
 TWITTER_ACCESS_TOKEN
 TWITTER_ACCESS_TOKEN_SECRET
 
+* Se NAO for a primeira vez que voce roda o Consumidor, que o Cassandra esta iniciado, e o keyspace e as tabelas criadas, vai na classe TweetConsumerLifecycleManager do modulo tweets-consumer e :
+- comente a linha 48
+- descomente a linha 51
+
+* Se quiser apagar as tabelas e o keyspace ao acabar de consumir dados do Kafka, descomente a linha 98 da mesma classe
+
 * Faça RUN nas aplicaçoes dos modulos tweets-producer e tweets-consumer e use pelo terminal:
 // começa produtor
 curl http://localhost:8080/tweets/collector
@@ -43,16 +49,21 @@ curl --request DELETE http://localhost:8080/tweets/collector
 // acaba consumidor
 curl --request DELETE http://localhost:9080/tweets/consumer
 
+
 PARA O TERCEIRO MODULO:
 
-* Crie os dois topicos necessarios (tweets_by_language para a resposta e um outro topico intermediario):
-// criacao dos topicos para o terceiro modulo
+* Crie o topico necessario (tweets_by_language):
 kafka-topics --zookeeper $KAFKA_ZOOKEEPER_CONNECT --create --topic tweets_by_language --partitions 3 --replication-factor 1
-kafka-topics --zookeeper $KAFKA_ZOOKEEPER_CONNECT --create --topic topico_intermediario_language --partitions 3 --replication-factor 1
 
 * Mostre os resultados no terminal:
 // recebe mensagens topico
-kafka-console-consumer --bootstrap-server localhost:9092 --topic tweets_by_language
+kafka-console-consumer --bootstrap-server localhost:9092 --topic tweets_by_language -formatter kafka.tools.DefaultMessageFormatter --property print.key=true --property print.value=true --property  key.deserializer=org.apache.kafka.common.serialization.StringDeserializer --property --value.deserializer=org.apache.kafka.common.serialization.LongDeserializer --from-beginning
+
+
+MELHORAS POSSIVEIS
+No Consumidor:
+- Por enquanto, a criaçao da tabela tweetsByLanguage usa como primary key (language, userName). Isso faz que somente seja guardado um tweet por pessoa e lingua, o que nao é otimo em termos de coleta de dados. Para melhorar isso, poderia-se botar a coluna dateCreated na clustering key, assim : ( (language, (userName, dateCreated) WITH CLUSTERING ORDER BY (userName ASC, dateCreated ASC) ), mas nesse caso deveria-se tambem inserir a hora no dateCreated ( modificar metodo getDateCreatedForCassandra() na classe Tweets desse mesmo modulo).
+- No final, poderia-se imprimir o total de elementos de cada tabela do Cassandra ao invés de todas as instáncias das tabelas.
 
 
 * Outras informaçoes para testes:
