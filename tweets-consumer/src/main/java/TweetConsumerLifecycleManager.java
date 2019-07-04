@@ -45,10 +45,10 @@ public class TweetConsumerLifecycleManager implements LifecycleManager, Serializ
         logger.info("Start");
 
         // do the set up of Cassandra the first time you run
-        //setUpCassandra();
+        setUpCassandra();
 
         // do this set up if Cassandra is already running
-        setUpCassandraAlreadyRunning();
+        //setUpCassandraAlreadyRunning();
 
         if (running.compareAndSet(false, true)) {
             ExecutorService executor = Executors.newSingleThreadExecutor();
