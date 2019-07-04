@@ -1,7 +1,3 @@
-// CRIAR TOPICO E TOPICO INTERMEDIARIO
-kafka-topics --zookeeper $KAFKA_ZOOKEEPER_CONNECT --create --topic tweets_by_language --partitions 3 --replication-factor 1
-kafka-topics --zookeeper $KAFKA_ZOOKEEPER_CONNECT --create --topic topico_intermediario_language --partitions 3 --replication-factor 1
-
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
@@ -11,11 +7,12 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KGroupedStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.KTable;
+import java.util.Date;
 
 import java.util.Arrays;
 import java.util.Properties;
 
-public class tweetsByLanguage {
+public class TweetsByLanguage {
 
     public static void main(String[] args) {
         Properties config = new Properties();
@@ -24,19 +21,25 @@ public class tweetsByLanguage {
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
         config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,Serdes.String().getClass());
         config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,Serdes.String().getClass());
-        
-        // pega stream entrante
-        KStream<String, String, Date, String, Double, Double> tweet = builder.stream("tweets_input");
-        // Vai de (null, userName,text, dateCreated, language, geoLatitude, geoLongitude) a (language, userName)
-        tweet = tweet.selectKey( (key,value) ->  value.split(",")[3]); // bota language como key
-        KStream<String, String> tweetLanguage = tweet.mapValues( value ->  value.split(",")[0]);  // bota userName como value
-        
-        // group by color + inserir
-        tweetLanguage.to("topico_intermediario_language");
-        KTable<String,String> recentTable = builder.table("topico_intermediario_language");
 
-       // KTable<String, Long> wordCounts = userAndColor.groupBy((key,value) -> value).count("counts");
-        KTable<String, Long> languageCounts = recentTable.groupBy( (key,value) -> new KeyValue<>( value, value) ).count("counts");
+        KStreamBuilder builder = new KStreamBuilder();
+
+        // pega stream entrante
+        KStream<String, String> tweet = builder.stream("tweets_input");
+        //tweet.print();
+
+        // Vai de (null, {"userName":userName, "text":text, "dateCreated":dateCreated, "language":language, "geoLatitude":geoLatitude, "geoLongitude":geoLongitude} ) a (language, userName)
+        tweet = tweet.selectKey( (key,value) ->  value.split("language")[1]); // bota ":language, "geoLatitude":geoLatitude, "geoLongitude":geoLongitude} como key
+        tweet = tweet.selectKey( (key,value) ->  key.split(":")[1]); // bota language, "geoLatitude":geoLatitude, "geoLongitude":geoLongitude como key
+        tweet = tweet.selectKey( (key,value) ->  key.split(",")[0]); // bota language como key
+        //tweet.print();
+
+        KStream<String, String> tweetLanguage = tweet.mapValues( value ->  value.split(",")[0]);  // bota {"userName":userName como value
+        tweetLanguage = tweetLanguage.mapValues( value ->  value.split(":")[1]);  // bota userName como value
+        //tweetLanguage.print();
+
+        KTable<String, Long> languageCounts = tweetLanguage.groupByKey().count("counts");
+        //languageCounts.print();
         languageCounts.to(Serdes.String(), Serdes.Long(), "tweets_by_language");
 
         KafkaStreams streams = new KafkaStreams(builder,config);

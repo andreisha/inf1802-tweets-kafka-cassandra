@@ -12,6 +12,7 @@
         <module>tweets-producer</module>
         <module>tweets-consumer</module>
         <module>tweets</module>
+        <module>tweets-by-language</module>
     </modules>
     <build>
         <plugins>

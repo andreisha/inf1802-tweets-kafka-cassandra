@@ -7,7 +7,7 @@ import com.datastax.driver.core.utils.UUIDs;
 import java.util.Calendar;
 
 public class Tweet {
-    private UUID id;
+    private String id;
     private String userName;      // Nome do usuario que enviou o tweet
     private String text;        // Texto do tweet
     private Date dateCreated;  // Data em que o tweet foi enviado
@@ -16,27 +16,23 @@ public class Tweet {
     private double geoLatitude;
     private double geoLongitude;
 
-
     public Tweet() {
+        UUID uuid = UUID.randomUUID();
+        this.id = uuid.toString();
     }
 
     public Tweet(String userName,String text, Date dateCreated, String language, double geoLatitude, double geoLongitude) {
-        this.id = UUIDs.timeBased();
+        //this.id = UUIDs.timeBased();
+        UUID uuid = UUID.randomUUID();
+        this.id = uuid.toString();
+        System.out.println(uuid);
+        System.out.println(this.id);
         this.userName = userName;
         this.text = text;
         this.dateCreated = dateCreated;
         this.language = language;
         this.geoLatitude = geoLatitude;
         this.geoLongitude = geoLongitude;
-
-        /*Calendar cal = Calendar.getInstance();
-        cal.setTime(dateCreated);
-        int year = cal.get(Calendar.YEAR);
-        int month = cal.get(Calendar.MONTH);
-        int day = cal.get(Calendar.DAY_OF_MONTH);
-
-        //LocalDate dt = LocalDate.fromYearMonthDay(2018,8,05 + i);
-        this.dateCreated = LocalDate.fromYearMonthDay(year,month,day);*/
     }
 
     public String toString(){   // Retorna string com as variaveis do objeto
@@ -48,7 +44,7 @@ public class Tweet {
                 "Longitude - " + geoLongitude;
     }
 
-    public UUID getId(){
+    public String getId(){
         return this.id;
     }
 
@@ -71,7 +67,8 @@ public class Tweet {
 
         LocalDate dateCreatedForCassandra = LocalDate.fromYearMonthDay(year,month,day);
 
-        return dateCreatedForCassandra;}
+        return dateCreatedForCassandra;
+    }
 
     public String getLanguage(){
         return this.language;

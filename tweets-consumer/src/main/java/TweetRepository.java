@@ -91,7 +91,13 @@ public class TweetRepository {
 
         final String query = sb.toString();
         System.out.println(query);
-        session.execute(query);
+        try {
+            session.execute(query);
+            System.out.println("Tweet inserido na tabela tweets");
+        }
+        catch (Exception e){
+            System.out.println("Erro na inserçao na tabela tweets");
+        }
         System.out.println("inserttweet - end");
     }
 
@@ -112,7 +118,13 @@ public class TweetRepository {
 
         final String query = sb.toString();
         System.out.println(query);
-        session.execute(query);
+        try {
+            session.execute(query);
+            System.out.println("Tweet inserido na tabela tweetsByLanguage");
+        }
+        catch (Exception e){
+            System.out.println("Erro na inserçao na tabela tweetsByLanguage");
+        }
         System.out.println("inserttweetByLanguage - end");
     }
 
@@ -197,7 +209,7 @@ public class TweetRepository {
     */
     public void deletetweet(Tweet tweet){
         System.out.println("deletetweet - init");
-        UUID uid = tweet.getId();
+        String uid = tweet.getId();
         StringBuilder sb = new StringBuilder("DELETE FROM ")
                 .append(TABLE_NAME)
                 .append(" WHERE id = '")

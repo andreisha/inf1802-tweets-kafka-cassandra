@@ -43,6 +43,13 @@ public class TweetConsumerLifecycleManager implements LifecycleManager, Serializ
 
     public void start() {
         logger.info("Start");
+
+        // do the set up of Cassandra the first time you run
+        //setUpCassandra();
+
+        // do this set up if Cassandra is already running
+        setUpCassandraAlreadyRunning();
+
         if (running.compareAndSet(false, true)) {
             ExecutorService executor = Executors.newSingleThreadExecutor();
             future = executor.submit(new Runnable() {
@@ -50,9 +57,10 @@ public class TweetConsumerLifecycleManager implements LifecycleManager, Serializ
                 public void run() {
                     logger.info("Start");
                     try {
-                        setUpCassandra();
                         consumer.subscribe(Arrays.asList(TOPIC_NAME));
                         logger.info("Consumidor subscrito no tópico: ", TOPIC_NAME);
+
+
                         while (true) {
                             ConsumerRecords<String, Tweet> records = consumer.poll(Duration.ofMillis(1000));
                             for (ConsumerRecord<String, Tweet> record : records) {
@@ -64,12 +72,12 @@ public class TweetConsumerLifecycleManager implements LifecycleManager, Serializ
                         }
                     }
                     catch (Exception e) {
-                        printAll();  // mesmo com erro, vemos o estado das tabelas
-                        e.printStackTrace();
+                        //printAll();  // mesmo com erro, vemos o estado das tabelas
+                        //e.printStackTrace();
                         logger.error ("Erro no consumo dos tweets do Kafka", e);
 
                     } finally {
-                        consumer.close();
+
                     }
                 }
             });
@@ -85,9 +93,11 @@ public class TweetConsumerLifecycleManager implements LifecycleManager, Serializ
                 consumer.wakeup();
             }
 
-            stopCassandra();
-            logger.info("Serviço finalizado");
             printAll();
+            // stop Cassandra when you finish
+            // stopCassandra();
+            consumer.close();
+            logger.info("Serviço finalizado");
 
         } else {
             logger.warn("O serviço não está executando. Não pode ser parado.");
@@ -106,20 +116,32 @@ public class TweetConsumerLifecycleManager implements LifecycleManager, Serializ
         System.out.println(((Row) row).getString("release_version"));
 
         this.sr = new KeyspaceRepository(session);
-
-        // deletar keyspace se ja existe
-        //sr.deleteKeyspace("library");
-        //System.out.println("Delete Keyspace library");
-
-
         sr.createKeyspace("library", "SimpleStrategy", 1);
         System.out.println("Create repository");
         sr.useKeyspace("library");
         System.out.println("Using repository library");
-
         this.br = new TweetRepository(session);
+
         br.createTable();
         br.createTableTweetsByLanguage();
+    }
+
+    public void setUpCassandraAlreadyRunning(){
+
+        cluster = Cluster.builder()
+                .addContactPoint("localhost")
+                .build();
+
+        Session session = cluster.connect();
+
+        ResultSet rs = session.execute("select release_version from system.local");
+        Row row = rs.one();
+        System.out.println(((Row) row).getString("release_version"));
+
+        this.sr = new KeyspaceRepository(session);
+        sr.useKeyspace("library");
+        System.out.println("Using repository library");
+        this.br = new TweetRepository(session);
     }
 
     public void stopCassandra(){
