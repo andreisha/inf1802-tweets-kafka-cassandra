@@ -1,3 +1,5 @@
+# Big Data & Streaming
+
 A ideia deste projeto é criar uma ferramenta para coletar e processar dados de streaming obtidos em tempo real da rede social Twitter.
 Para isso, o projeto tem varios modulos:
 * O primeiro, tweets-producer, onde sao coletados os dados do Twitter através da biblioteca Twitter4J e injetados em um topico do Kafka.
